@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Technical Assessment Platform</title>
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#ffffff; --accent:#2563eb; --success:#16a34a; --danger:#dc2626;
+      --muted:#6b7280;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Arial; background:var(--bg); color:#111;}
+    .container{max-width:920px;margin:28px auto;padding:20px;}
+    .card{background:var(--card);border-radius:12px;padding:20px;box-shadow:0 6px 20px rgba(20,20,50,0.06)}
+    h1{margin:0 0 10px;font-size:20px}
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    .col{flex:1 1 0}
+    .languages{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .lang-btn{padding:8px 12px;border-radius:8px;border:1px solid #e6e9ef;background:#fff;cursor:pointer}
+    .lang-btn.active{background:var(--accent);color:#fff;border-color:transparent}
+    .muted{color:var(--muted);font-size:13px}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:12px}
+    button{cursor:pointer;border:0;padding:10px 14px;border-radius:8px;background:var(--accent);color:#fff;font-weight:600}
+    button.ghost{background:#eef2ff;color:var(--accent);font-weight:600;border:1px solid #e6e9ef}
+    button.danger{background:var(--danger)}
+    .question-area{margin-top:18px}
+    .options{display:block;margin-top:10px}
+    .option{display:block;padding:10px;border-radius:8px;border:1px solid #eee;margin-bottom:8px;background:#fafafa;cursor:pointer}
+    .option.selected{outline:2px solid #cfe3ff;background:#eef7ff}
+    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+    .progress{font-size:13px;color:var(--muted)}
+    .result{padding:14px;border-radius:10px;margin-top:12px}
+    .success{background:rgba(22,163,74,0.09);border:1px solid rgba(22,163,74,0.15); color:var(--success)}
+    .fail{background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.12); color:var(--danger)}
+    .upload-row{display:flex;gap:12px;align-items:center;margin-top:12px}
+    input[type=file]{padding:6px}
+    .center{display:flex;justify-content:center}
+    @media(max-width:620px){
+      .row{flex-direction:column}
+      .controls{flex-direction:column;align-items:stretch}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card" id="page">
+      <h1>Dynamic Technical Assessment Platform</h1>
+      <p class="muted">Select your preferred languages, take a short multiple-choice assessment, and if you pass you'll be able to upload your resume.</p>
+
+      <!-- Language Selection -->
+      <div id="page-language" class="page">
+        <hr style="margin:16px 0">
+        <h3>1) Choose languages (multiple)</h3>
+        <div class="languages" id="languagesList"></div>
+        <div class="controls">
+          <div class="muted">Choose one or more languages then click <strong>Start Test</strong>.</div>
+          <div style="margin-left:auto">
+            <button id="startTestBtn">Start Test</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assessment Page -->
+      <div id="page-assessment" class="page" style="display:none">
+        <hr style="margin:16px 0">
+        <div style="display:flex;gap:12px;align-items:center;justify-content:space-between">
+          <div>
+            <h3 id="testTitle">Assessment</h3>
+            <div class="muted" id="selectedLangsLabel">Languages: -</div>
+          </div>
+          <div class="muted">Threshold to pass: <strong id="thresholdLabel">60%</strong></div>
+        </div>
+
+        <div class="question-area card" style="margin-top:12px">
+          <div id="questionText" style="font-weight:600"></div>
+          <div id="options" class="options"></div>
+          <div class="footer">
+            <div class="progress" id="progressText">Question 1 / 1</div>
+            <div>
+              <button class="ghost" id="prevBtn">Previous</button>
+              <button id="nextBtn">Next</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="danger" id="quitBtn">Quit</button>
+          <div style="margin-left:auto">
+            <button id="submitTestBtn">Submit Test</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result Page -->
+      <div id="page-result" class="page" style="display:none">
+        <hr style="margin:16px 0">
+        <h3>Result</h3>
+        <div id="resultBox"></div>
+
+        <div id="resumeArea" style="display:none">
+          <p class="muted">Upload your resume (PDF or DOCX).</p>
+          <div class="upload-row">
+            <input type="file" id="resumeFile" accept=".pdf,.doc,.docx,.txt"/>
+            <button id="uploadBtn">Upload</button>
+            <button id="downloadResumeBtn" style="display:none" class="ghost">Download / Open</button>
+          </div>
+          <div style="margin-top:12px" id="uploadedInfo"></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button id="restartBtn">Take Test Again</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const QUESTIONS = {
+      "JavaScript": [
+        { q:"Which of the following is used to declare a block-scoped variable in modern JS?", opts:["var","let","function","global"], a:1 },
+        { q:"What is the type of NaN in JavaScript?", opts:["number","string","undefined","object"], a:0 },
+        { q:"Which method converts a JSON string to a JS object?", opts:["JSON.parse","JSON.stringify","toObject","parseJSON"], a:0 }
+      ],
+      "Python": [
+        { q:"What is the keyword to define a function in Python?", opts:["func","def","function","lambda"], a:1 },
+        { q:"Which data type is immutable?", opts:["list","dict","set","tuple"], a:3 },
+        { q:"What does 'PEP' stand for in Python community?", opts:["Python Enhancement Proposal","Python Easy Protocol","Program Execution Plan","Python Exec Path"], a:0 }
+      ],
+      "Java": [
+        { q:"Which of these is not a Java access modifier?", opts:["public","private","protected","exposed"], a:3 },
+        { q:"What is the size of int in Java (in bits)?", opts:["16","32","64","8"], a:1 },
+        { q:"Which keyword is used to inherit a class?", opts:["implement","extends","inherits","super"], a:1 }
+      ],
+      "C++": [
+        { q:"Which operator is used for scope resolution in C++?", opts:["::",":",".",">>"], a:0 },
+        { q:"Which of these is not a C++ standard container?", opts:["vector","map","list","table"], a:3 },
+        { q:"What does RAII stand for?", opts:["Resource Acquisition Is Initialization","Random Access Initialization","Runtime Allocation Is Immediate","Resource Allocation In Interface"], a:0 }
+      ]
+    };
+
+    // Config
+    const QUESTIONS_PER_LANG = 2;      
+    const PASS_THRESHOLD_PERCENT = 60; 
+
+    // Page elements
+    const languagesList = document.getElementById('languagesList');
+    const startTestBtn = document.getElementById('startTestBtn');
+    const pageLanguage = document.getElementById('page-language');
+    const pageAssessment = document.getElementById('page-assessment');
+    const pageResult = document.getElementById('page-result');
+    const selectedLangsLabel = document.getElementById('selectedLangsLabel');
+    const thresholdLabel = document.getElementById('thresholdLabel');
+    const questionText = document.getElementById('questionText');
+    const optionsDiv = document.getElementById('options');
+    const progressText = document.getElementById('progressText');
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const submitTestBtn = document.getElementById('submitTestBtn');
+    const quitBtn = document.getElementById('quitBtn');
+    const resultBox = document.getElementById('resultBox');
+    const resumeArea = document.getElementById('resumeArea');
+    const restartBtn = document.getElementById('restartBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const resumeFileInput = document.getElementById('resumeFile');
+    const uploadedInfo = document.getElementById('uploadedInfo');
+    const downloadResumeBtn = document.getElementById('downloadResumeBtn');
+
+  
+    const LANGS = Object.keys(QUESTIONS);
+    LANGS.forEach(lang => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'lang-btn';
+      btn.innerText = lang;
+      btn.dataset.lang = lang;
+      btn.addEventListener('click', () => btn.classList.toggle('active'));
+      languagesList.appendChild(btn);
+    });
+
+    // session state object
+    const stateKey = 'assessmentState_v1';
+    let state = loadState() || {
+      selectedLangs: [],
+      questions: [],  
+      answers: [],     
+      currentIndex: 0,
+      submitted: false,
+      score: null,
+      resumeBlobUrl: null,
+      resumeFileName: null
+    };
+
+    thresholdLabel.textContent = PASS_THRESHOLD_PERCENT + '%';
+
+    // helper: load & save to sessionStorage
+    function saveState(){ sessionStorage.setItem(stateKey, JSON.stringify(state)); }
+    function loadState(){ try{ const s = sessionStorage.getItem(stateKey); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
+
+
+    function buildQuestionsFromLangs(langs){
+      const pool = [];
+      langs.forEach(lang => {
+        const arr = QUESTIONS[lang] || [];
+        // simple: take first QUESTIONS_PER_LANG (could randomize)
+        for (let i=0;i<Math.min(QUESTIONS_PER_LANG, arr.length);i++){
+          const q = arr[i];
+          pool.push({ lang, q: q.q, opts: q.opts.slice(), a: q.a });
+        }
+      });
+      return pool;
+    }
+
+    // UI: start test
+    startTestBtn.addEventListener('click', () => {
+      const selected = Array.from(document.querySelectorAll('.lang-btn.active')).map(b => b.dataset.lang);
+      if (selected.length === 0){ alert('Select at least one language'); return; }
+      state.selectedLangs = selected;
+      state.questions = buildQuestionsFromLangs(selected);
+      // shuffle questions lightly
+      state.questions = state.questions.sort(()=>Math.random()-0.5);
+      state.answers = Array(state.questions.length).fill(null);
+      state.currentIndex = 0;
+      state.submitted = false;
+      state.score = null;
+      saveState();
+      renderAssessmentPage();
+    });
+
+    // render assessment
+    function renderAssessmentPage(){
+      pageLanguage.style.display = 'none';
+      pageAssessment.style.display = 'block';
+      pageResult.style.display = 'none';
+      selectedLangsLabel.textContent = 'Languages: ' + state.selectedLangs.join(', ');
+      if (!state.questions.length){ alert('No questions available for selected language(s).'); return; }
+      renderQuestion();
+    }
+
+    function renderQuestion(){
+      const idx = state.currentIndex;
+      const total = state.questions.length;
+      const item = state.questions[idx];
+      questionText.textContent = `${idx+1}. (${item.lang}) ${item.q}`;
+      optionsDiv.innerHTML = '';
+      item.opts.forEach((opt, i) => {
+        const div = document.createElement('div');
+        div.className = 'option' + (state.answers[idx] === i ? ' selected' : '');
+        div.textContent = opt;
+        div.addEventListener('click', () => {
+          state.answers[idx] = i;
+          saveState();
+          renderQuestion();
+        });
+        optionsDiv.appendChild(div);
+      });
+      progressText.textContent = `Question ${idx+1} / ${total}`;
+      prevBtn.disabled = idx === 0;
+      nextBtn.disabled = idx === total - 1;
+    }
+
+    nextBtn.addEventListener('click', ()=>{
+      if (state.currentIndex < state.questions.length - 1){ state.currentIndex++; saveState(); renderQuestion(); }
+    });
+    prevBtn.addEventListener('click', ()=>{
+      if (state.currentIndex > 0){ state.currentIndex--; saveState(); renderQuestion(); }
+    });
+
+    quitBtn.addEventListener('click', ()=>{
+      if (!confirm('Quit test and go back to language selection? Progress will be lost for this session.')) return;
+      sessionStorage.removeItem(stateKey);
+      state = null;
+      // reset UI
+      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+      pageLanguage.style.display = 'block';
+      pageAssessment.style.display = 'none';
+      pageResult.style.display = 'none';
+    });
+    submitTestBtn.addEventListener('click', ()=>{
+      if (!confirm('Submit test? You will not be able to change answers afterwards.')) return;
+      // count correct
+      let correct = 0;
+      for (let i=0;i<state.questions.length;i++){
+        if (state.answers[i] === state.questions[i].a) correct++;
+      }
+      const total = state.questions.length;
+      const percent = Math.round((correct/total)*100);
+      state.score = { correct, total, percent };
+      state.submitted = true;
+      saveState();
+      renderResultPage();
+    });
+
+    function renderResultPage(){
+      pageLanguage.style.display = 'none';
+      pageAssessment.style.display = 'none';
+      pageResult.style.display = 'block';
+      resultBox.innerHTML = '';
+      const s = state.score;
+      if (!s){ resultBox.innerHTML = '<div class="muted">No score available.</div>'; return; }
+      const passed = s.percent >= PASS_THRESHOLD_PERCENT;
+      const rdiv = document.createElement('div');
+      rdiv.className = 'result ' + (passed ? 'success':'fail');
+      rdiv.innerHTML = `<strong>Score:</strong> ${s.correct} / ${s.total} (${s.percent}%)<br>`;
+      rdiv.innerHTML += passed ? '<strong>Result:</strong> Passed — you may upload your resume.' : '<strong>Result:</strong> Did not meet threshold. Try again later.';
+      resultBox.appendChild(rdiv);
+
+      // show resume upload if passed
+      resumeArea.style.display = passed ? 'block' : 'none';
+
+      // if previously uploaded resume exists in state, show info
+      if (state.resumeBlobUrl){
+        uploadedInfo.innerHTML = `Uploaded: <strong>${state.resumeFileName || 'resume'}</strong>`;
+        downloadResumeBtn.style.display = 'inline-block';
+        downloadResumeBtn.onclick =()=> window.open(state.resumeBlobUrl, '_blank');
+      } else {
+        uploadedInfo.innerHTML = '';
+        downloadResumeBtn.style.display = 'none';
+      }
+    }
+
+    restartBtn.addEventListener('click', ()=>{
+      if (!confirm('Restart the assessment flow? This clears current session progress.')) return;
+      sessionStorage.removeItem(stateKey);
+      location.reload();
+    });
+
+    // Upload resume (client-side only)
+    uploadBtn.addEventListener('click', ()=>{
+      if (!state.submitted || !state.score) { alert('You must submit test first.'); return; }
+      if (state.score.percent < PASS_THRESHOLD_PERCENT){ alert('You did not pass yet.'); return; }
+      const file = resumeFileInput.files[0];
+      if (!file){ alert('Choose a file first.'); return; }
+      if (state.resumeBlobUrl){
+        URL.revokeObjectURL(state.resumeBlobUrl);
+      }
+      const blobUrl = URL.createObjectURL(file);
+      state.resumeBlobUrl = blobUrl;
+      state.resumeFileName = file.name;
+      saveState();
+      uploadedInfo.innerHTML = `Uploaded: <strong>${file.name}</strong>`;
+      downloadResumeBtn.style.display = 'inline-block';
+      downloadResumeBtn.onclick =()=> window.open(blobUrl, '_blank');
+      alert('Resume uploaded (client-side). In a real app this would be sent to the backend.');
+    });
+    (function init(){
+      if (state && state.questions && state.questions.length){
+        if (state.submitted) renderResultPage();
+        else renderAssessmentPage();
+      } else {
+        // show language page (default)
+        pageLanguage.style.display = 'block';
+        pageAssessment.style.display = 'none';
+        pageResult.style.display = 'none';
+      }
+    })();
+
+
+    document.addEventListener('keydown', (e)=>{
+      if (pageAssessment.style.display === 'block'){
+        if (e.key === 'ArrowRight') nextBtn.click();
+        if (e.key === 'ArrowLeft') prevBtn.click();
+      }
+    });
+
+  </script>
+</body>
+</html>
